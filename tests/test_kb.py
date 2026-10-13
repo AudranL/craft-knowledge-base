@@ -62,7 +62,7 @@ def test_search_without_embedder_falls_back_to_full_text(tmp_path, library):
 
 def test_fts_query_drops_stopwords_and_quotes_terms():
     assert fts_query("Qu'est-ce que le TDD ?") == '"tdd"'
-    assert fts_query("aggregate root, aggregate") == '"aggregate" OR "root"'
+    assert fts_query("aggregate root, aggregate") == '"aggregate root aggregate" OR "aggregate" OR "root"'
     assert fts_query("the") == '"the"'
 
 

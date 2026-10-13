@@ -131,7 +131,10 @@ def fts_query(query: str) -> str | None:
     useful = [t for t in tokens if t not in STOPWORDS and len(t) > 1] or tokens
     if not useful:
         return None
-    return " OR ".join(f'"{t}"' for t in dict.fromkeys(useful))
+    terms = [f'"{t}"' for t in dict.fromkeys(useful)]
+    if len(terms) > 1:  # la phrase exacte compte en plus des mots isolés
+        terms.insert(0, '"' + " ".join(useful) + '"')
+    return " OR ".join(terms)
 
 
 class KnowledgeBase:
