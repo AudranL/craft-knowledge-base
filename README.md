@@ -12,52 +12,62 @@ ebooks/ ──ingest──▶ SQLite (sections, passages, index FTS5, vecteurs) 
 
 ## Installation (macOS)
 
+Range tes ebooks dans un dossier hors du dépôt, puis :
+
 ```bash
-# 1. Outils
-brew install uv ollama
-ollama serve            # ou lance l'application Ollama
-ollama pull bge-m3      # modèle d'embedding multilingue (~1,2 Go)
-
-# 2. Projet
-cd ~/Dev/craft-kb       # là où tu as décompressé le projet
-uv sync
-
-# 3. Indexation (incrémentale : relance-la à chaque nouvel ebook)
-uv run craft-kb ingest ~/Ebooks/craftsmanship
-uv run craft-kb status
-uv run craft-kb search "aggregate invariants"
+./scripts/setup.sh ~/Ebooks/craftsmanship
 ```
 
-Copie [`examples/craft-kb.toml`](examples/craft-kb.toml) à la racine de ton dossier d'ebooks pour
-corriger titres et auteurs, souvent absents ou faux dans les métadonnées des PDF (voir plus bas).
+Le script fait tout, et saute ce qui est déjà fait :
+
+1. installe `uv` et `ollama` avec Homebrew s'ils manquent ;
+2. démarre Ollama comme service (il redémarrera à chaque ouverture de session) et télécharge
+   le modèle d'embedding `bge-m3` (~1,2 Go) ;
+3. installe les dépendances Python du projet ;
+4. copie [`examples/craft-kb.toml`](examples/craft-kb.toml) dans le dossier d'ebooks s'il n'y en a
+   pas déjà un, pour corriger titres et auteurs (voir plus bas) ;
+5. indexe les livres nouveaux ou modifiés, et retire ceux qui ont disparu du dossier ;
+6. déclare le serveur MCP dans Claude Code et dans Claude Desktop (la config existante est
+   sauvegardée en `.bak`) ;
+7. affiche l'état de la base.
+
+C'est permanent : la base reste dans `~/.craft-kb/` et Claude lance lui-même le serveur MCP à
+chaque session. **Relance le script seulement après avoir ajouté ou retiré un ebook**, ou après une
+mise à jour du projet. Il se souvient du dossier, `./scripts/setup.sh` sans argument suffit.
+
+Redémarre Claude Desktop la première fois pour qu'il voie le serveur.
 
 `bge-m3` est multilingue : une question en français retrouve des passages de livres en anglais.
-Pour changer de modèle : `CRAFT_KB_EMBED_MODEL=nomic-embed-text uv run craft-kb embed`
+Pour changer de modèle : `CRAFT_KB_EMBED_MODEL=nomic-embed-text ./scripts/setup.sh`
 (l'index sémantique est alors recalculé).
 
-## Brancher le MCP
+### Installation manuelle
 
-**Claude Code**
+Les mêmes étapes, à la main :
 
 ```bash
-claude mcp add --scope user craft-kb -- uv --directory ~/Dev/craft-kb run craft-kb serve
+brew install uv ollama
+brew services start ollama
+ollama pull bge-m3
+uv sync
+cp examples/craft-kb.toml ~/Ebooks/craftsmanship/
+uv run craft-kb ingest ~/Ebooks/craftsmanship
+claude mcp add --scope user craft-kb -- uv --directory "$PWD" run craft-kb serve
 ```
 
-**Claude Desktop** : dans `~/Library/Application Support/Claude/claude_desktop_config.json`.
-Les chemins doivent être absolus, l'application ne connaît pas ton `PATH` (`which uv` donne celui de uv).
+Pour Claude Desktop, ajoute dans `~/Library/Application Support/Claude/claude_desktop_config.json`
+(chemins absolus : l'application ne connaît pas ton `PATH`, `which uv` donne celui de uv) :
 
 ```json
 {
   "mcpServers": {
     "craft-kb": {
       "command": "/opt/homebrew/bin/uv",
-      "args": ["--directory", "/Users/<toi>/Dev/craft-kb", "run", "craft-kb", "serve"]
+      "args": ["--directory", "/Users/<toi>/Projects/Perso/craft-knowledge-base", "run", "craft-kb", "serve"]
     }
   }
 }
 ```
-
-Redémarre Claude Desktop après modification.
 
 ## Ce que Claude obtient
 
