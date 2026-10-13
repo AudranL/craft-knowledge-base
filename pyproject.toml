@@ -1,0 +1,30 @@
+[project]
+name = "craft-kb"
+version = "0.1.0"
+description = "Base de connaissance locale d'ebooks sur le software craftsmanship, exposée en serveur MCP"
+readme = "README.md"
+authors = [
+    { name = "Audran Landuyt" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "ebooklib>=0.20",
+    "httpx>=0.28.1",
+    "lxml>=5.0",
+    "mcp>=2.3,<3",
+    "numpy>=2.0",
+    "pymupdf>=1.28.2",
+]
+
+[project.scripts]
+craft-kb = "craft_kb.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
