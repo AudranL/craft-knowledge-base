@@ -14,8 +14,8 @@ def test_full_text_search_finds_the_right_section(kb):
 
     assert result.mode == "hybride"
     assert result.hits[0].book == "Refactoring Handbook"
-    assert result.hits[0].section == "Refactoring > Extract Method"
-    assert result.hits[0].location == "p. 2"
+    assert result.hits[0].section == "Refactoring"
+    assert "### Extract Method" in result.hits[0].text
 
 
 def test_semantic_search_bridges_french_queries_to_english_books(tmp_path, library):

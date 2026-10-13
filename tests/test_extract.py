@@ -27,7 +27,7 @@ def test_epub_keeps_code_blocks_and_headings(tmp_path):
 
 
 def test_pdf_sections_come_from_the_outline_with_page_ranges(tmp_path):
-    book = extract_pdf(make_pdf(tmp_path / "r.pdf"))
+    book = extract_pdf(make_pdf(tmp_path / "r.pdf"), toc_depth=2)
 
     assert book.title == "Refactoring Handbook"
     assert [(s.title, s.breadcrumb, s.location) for s in book.sections] == [
@@ -51,3 +51,10 @@ def test_chunks_stay_bounded_and_carry_their_heading():
     assert all(len(c.text.split()) <= 450 + 80 for c in chunks)
     assert chunks[0].heading == "First"
     assert chunks[-1].heading == "Second"
+
+
+def test_pdf_keeps_chapter_level_when_chapters_are_short(tmp_path):
+    book = extract_pdf(make_pdf(tmp_path / "r.pdf"))
+
+    assert [(s.title, s.location) for s in book.sections] == [("Refactoring", "p. 1-2"), ("Code Smells", "p. 3")]
+    assert "### Extract Method" in book.sections[0].text

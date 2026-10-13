@@ -97,7 +97,8 @@ def make_pdf(path: Path) -> Path:
     for i, (title, body, code) in enumerate(pages, 1):
         page = doc.new_page()
         page.insert_text((72, 40), "Refactoring Handbook", fontname="helv", fontsize=8)
-        page.insert_textbox(pymupdf.Rect(72, 70, 540, 100), title, fontname="hebo", fontsize=16)
+        size = 13 if title == "Extract Method" else 16  # sous-section : titre plus petit
+        page.insert_textbox(pymupdf.Rect(72, 70, 540, 100), title, fontname="hebo", fontsize=size)
         page.insert_textbox(pymupdf.Rect(72, 110, 540, 500), body, fontname="helv", fontsize=11)
         if code:
             page.insert_textbox(pymupdf.Rect(72, 520, 540, 620), code, fontname="cour", fontsize=10)
