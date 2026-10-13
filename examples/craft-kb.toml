@@ -1,0 +1,42 @@
+# Titres et auteurs corrigés à la main, prioritaires sur les métadonnées des fichiers.
+# À copier à la racine du dossier d'ebooks, puis relancer `craft-kb ingest <dossier>`
+# (les livres ne sont pas ré-extraits, seules les métadonnées changent).
+#
+# Chaque table est un nom de fichier ou un motif glob, insensible à la casse ;
+# le premier motif qui correspond l'emporte.
+
+["*clean*code*"]
+title = "Clean Code: A Handbook of Agile Software Craftsmanship"
+authors = "Robert C. Martin"
+
+["*clean*architecture*"]
+title = "Clean Architecture: A Craftsman's Guide to Software Structure and Design"
+authors = "Robert C. Martin"
+
+["*domain-driven*design*distilled*"]
+title = "Domain-Driven Design Distilled"
+authors = "Vaughn Vernon"
+
+["*evans*domain-driven*design*"]
+title = "Domain-Driven Design: Tackling Complexity in the Heart of Software"
+authors = "Eric Evans"
+
+["*growing*object*oriented*"]
+title = "Growing Object-Oriented Software, Guided by Tests"
+authors = "Steve Freeman, Nat Pryce"
+
+["*eventstorming*"]
+title = "Introducing EventStorming"
+authors = "Alberto Brandolini"
+
+["*refactoring*improving*1999*"]
+title = "Refactoring: Improving the Design of Existing Code (1re édition)"
+authors = "Martin Fowler"
+
+["*bdd*in*action*"]
+title = "BDD in Action: Behavior-Driven Development for the Whole Software Lifecycle"
+authors = "John Ferguson Smart"
+
+["*extreme*programming*explained*"]
+title = "Extreme Programming Explained: Embrace Change (2e édition)"
+authors = "Kent Beck, Cynthia Andres"

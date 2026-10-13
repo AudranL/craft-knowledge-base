@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import re
+import tomllib
 import sqlite3
 import threading
 from collections.abc import Callable, Iterator
@@ -19,6 +21,9 @@ from .embed import Embedder, EmbeddingUnavailable
 from .extract import extract_book
 
 SUPPORTED = {".epub", ".pdf"}
+METADATA_FILE = "craft-kb.toml"
+# À incrémenter quand l'extraction change : les livres déjà indexés sont alors ré-extraits.
+EXTRACTOR_VERSION = 2
 RRF_K = 60
 CANDIDATES = 50
 
@@ -93,7 +98,32 @@ def _file_hash(path: Path) -> str:
     with path.open("rb") as f:
         for block in iter(lambda: f.read(1 << 20), b""):
             h.update(block)
-    return h.hexdigest()
+    return f"{h.hexdigest()}:v{EXTRACTOR_VERSION}"
+
+
+def load_metadata(root: Path) -> dict[str, dict[str, str]]:
+    """Titres et auteurs corrigés à la main, dans <dossier>/craft-kb.toml.
+
+    Chaque table est un nom de fichier ou un motif glob :
+
+        ["Clean.Code*.pdf"]
+        title = "Clean Code"
+        authors = "Robert C. Martin"
+    """
+    file = root / METADATA_FILE
+    if not file.is_file():
+        return {}
+    with file.open("rb") as f:
+        data = tomllib.load(f)
+    return {pattern: {k: str(v) for k, v in values.items() if k in ("title", "authors")}
+            for pattern, values in data.items() if isinstance(values, dict)}
+
+
+def metadata_for(path: Path, metadata: dict[str, dict[str, str]]) -> dict[str, str]:
+    for pattern, values in metadata.items():
+        if fnmatch.fnmatch(path.name.lower(), pattern.lower()):
+            return values
+    return {}
 
 
 def fts_query(query: str) -> str | None:
@@ -132,16 +162,30 @@ class KnowledgeBase:
         return row["value"] if row else None
 
     # -------------------------------------------------------------- ingestion
-    def ingest_file(self, path: Path) -> str:
+    def ingest_file(self, path: Path, overrides: dict[str, str] | None = None) -> str:
         path = path.resolve()
         digest = _file_hash(path)
+        overrides = overrides or {}
         with self._conn() as con:
-            row = con.execute("SELECT id, file_hash FROM books WHERE file_path = ?", (str(path),)).fetchone()
+            row = con.execute(
+                "SELECT id, file_hash, title, authors FROM books WHERE file_path = ?", (str(path),)
+            ).fetchone()
             if row and row["file_hash"] == digest:
-                return "inchangé"
+                title = overrides.get("title", row["title"])
+                authors = overrides.get("authors", row["authors"])
+                if (title, authors) == (row["title"], row["authors"]):
+                    return "inchangé"
+                con.execute("UPDATE books SET title = ?, authors = ? WHERE id = ?", (title, authors, row["id"]))
+                con.execute(
+                    "UPDATE chunks_fts SET book_title = ? WHERE rowid IN (SELECT id FROM chunks WHERE book_id = ?)",
+                    (title, row["id"]),
+                )
+                return "métadonnées mises à jour"
         book = extract_book(path)
         if not book.sections:
             return "vide (aucun texte extrait : PDF scanné ou protégé par DRM ?)"
+        book.title = overrides.get("title", book.title)
+        book.authors = overrides.get("authors", book.authors)
         with self._conn() as con:
             if row:
                 self._delete_book(con, row["id"])
@@ -176,10 +220,11 @@ class KnowledgeBase:
     ) -> dict[str, int]:
         root = root.expanduser().resolve()
         files = sorted(p for p in root.rglob("*") if p.suffix.lower() in SUPPORTED and p.is_file())
+        metadata = load_metadata(root)
         counts: dict[str, int] = {}
         for path in files:
             try:
-                status = self.ingest_file(path)
+                status = self.ingest_file(path, metadata_for(path, metadata))
             except Exception as exc:  # un livre illisible ne bloque pas les autres
                 status = "erreur"
                 log(f"  ✗ {path.name} : {exc}")

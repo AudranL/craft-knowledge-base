@@ -64,3 +64,15 @@ def test_fts_query_drops_stopwords_and_quotes_terms():
     assert fts_query("Qu'est-ce que le TDD ?") == '"tdd"'
     assert fts_query("aggregate root, aggregate") == '"aggregate" OR "root"'
     assert fts_query("the") == '"the"'
+
+
+def test_metadata_file_overrides_titles_without_reextracting(kb, library):
+    (library / "craft-kb.toml").write_text(
+        '["refactoring*.pdf"]\ntitle = "Refactoring (1st ed.)"\nauthors = "Martin Fowler"\n', encoding="utf-8"
+    )
+
+    counts = kb.ingest_dir(library, log=lambda _: None)
+
+    assert counts == {"inchangé": 1, "métadonnées": 1}
+    hit = kb.search("Extract Method", book="fowler").hits[0]
+    assert (hit.book, hit.authors) == ("Refactoring (1st ed.)", "Martin Fowler")
