@@ -28,6 +28,9 @@ uv run craft-kb status
 uv run craft-kb search "aggregate invariants"
 ```
 
+Copie [`examples/craft-kb.toml`](examples/craft-kb.toml) à la racine de ton dossier d'ebooks pour
+corriger titres et auteurs, souvent absents ou faux dans les métadonnées des PDF (voir plus bas).
+
 `bge-m3` est multilingue : une question en français retrouve des passages de livres en anglais.
 Pour changer de modèle : `CRAFT_KB_EMBED_MODEL=nomic-embed-text uv run craft-kb embed`
 (l'index sémantique est alors recalculé).
@@ -82,17 +85,42 @@ Si Ollama n'est pas lancé, la recherche bascule en plein texte et le signale da
 Configuration par variables d'environnement : `CRAFT_KB_DB` (défaut `~/.craft-kb/kb.sqlite`),
 `OLLAMA_URL` (défaut `http://localhost:11434`), `CRAFT_KB_EMBED_MODEL` (défaut `bge-m3`).
 
+## Titres et auteurs : `craft-kb.toml`
+
+Les métadonnées des PDF sont souvent vides (titre = nom de fichier) ou fausses (une URL en guise
+d'auteur). Or le titre et l'auteur apparaissent dans chaque citation. Un fichier `craft-kb.toml`
+à la racine du dossier d'ebooks les fixe :
+
+```toml
+["*clean*code*"]          # nom de fichier ou motif glob, insensible à la casse
+title = "Clean Code: A Handbook of Agile Software Craftsmanship"
+authors = "Robert C. Martin"
+```
+
+Après modification, `craft-kb ingest` met à jour les métadonnées sans ré-extraire les livres.
+Sans fichier, le titre vient des métadonnées ou, à défaut, du nom de fichier nettoyé.
+
 ## Comment les livres sont découpés
 
 - **EPUB** : sections calquées sur la table des matières, y compris les sous-sections pointant
   vers une ancre au sein d'un même fichier. Titres, paragraphes et blocs de code (```) sont conservés.
-- **PDF** : sections tirées du sommaire du PDF (deux niveaux), avec les pages. Les lignes sont
-  regroupées en paragraphes, les titres sont repérés à leur taille de police, le code à sa police
-  à chasse fixe, et les en-têtes ou pieds de page répétés sont retirés. Sans sommaire, le livre
-  est découpé par tranches de 10 pages.
+- **PDF** : sections tirées du sommaire du PDF, avec les pages. La profondeur du sommaire
+  s'adapte au livre : la plus faible pour laquelle 90 % des sections font moins de 5 000 mots
+  (chapitres pour Clean Architecture, sous-sections pour Evans, où « Aggregates » est une section).
+  Les lignes sont regroupées en paragraphes ; les titres sont repérés à leur taille de police,
+  avec un niveau par taille ; le code est repéré à sa police à chasse fixe ; les légendes de figure,
+  numéros de page, en-têtes et pieds de page répétés sont retirés. Sans sommaire, le livre est
+  découpé par tranches de 10 pages.
+- Une section de plus de 6 000 mots est redécoupée sur ses titres internes : dans *Refactoring*,
+  dont le sommaire s'arrête aux chapitres, chaque refactoring devient une section.
+- Les pages liminaires et annexes sont écartées : page de titre, copyright, dédicace, tables des
+  matières, « Praise for… », remerciements, à propos de l'auteur, couverture, index. Une section
+  trop courte (titre de partie seul) est rattachée à la suivante plutôt que perdue.
 - Les passages indexés font environ 300 mots, se recouvrent légèrement et gardent leur sous-titre.
   Le contexte (livre › chapitre › section) est ajouté au texte vectorisé.
-- Les sections « Index » sont ignorées, car elles polluent la recherche plein texte.
+- La recherche plein texte valorise la phrase exacte en plus des mots isolés.
+- Quand l'extraction évolue (`EXTRACTOR_VERSION` dans `kb.py`), le prochain `ingest` ré-extrait
+  les livres déjà indexés.
 
 Limites : les fichiers protégés par DRM et les PDF scannés (sans couche texte) ne donnent aucun
 texte ; l'ingestion les signale comme « vide ».
